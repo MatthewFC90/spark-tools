@@ -365,12 +365,13 @@ async function apiCall(action, params = {}) {
 async function apiPost(action, body) {
   if (!SCRIPT_URL) return { ok: false, error: 'No URL configured. Go to Settings.' };
   try {
-    const res = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      body: JSON.stringify({ action, ...body }),
+    const params = new URLSearchParams({ action, ...body });
+    const res = await fetch(SCRIPT_URL + '?' + params, {
+      method: 'GET',
+      redirect: 'follow',
     });
-    const data = await res.json();
-    return data;
+    const text = await res.text();
+    return JSON.parse(text);
   } catch (e) {
     return { ok: false, error: 'Network error: ' + e.message };
   }
