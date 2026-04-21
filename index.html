@@ -546,7 +546,7 @@ document.getElementById('name-modal').addEventListener('click', function(e) {
 function renderQR() {
   const grid = document.getElementById('qr-grid');
   grid.innerHTML = '';
-  const base = window.location.origin + window.location.pathname;
+  const base = 'https://MatthewFC90.github.io/spark-tools';
 
   if (!toolsCache.length) {
     grid.innerHTML = '<p style="font-size:13px;color:var(--text-muted);">No tools loaded yet. Connect to Google Sheets first.</p>';
