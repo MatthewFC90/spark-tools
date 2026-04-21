@@ -511,7 +511,7 @@ async function submitCheckout() {
 
   const realSite = action === 'in' ? 'Depot / Yard' : action === 'maint' ? 'Workshop / Maintenance' : site;
 
-  const res = await apiPost('checkout', { toolId: tool, who: currentUser, site: realSite, action, note });
+  const res = await apiPost('checkout', { toolId: tool, who: currentUser, site: realSite, status: action, note });
 
   btn.innerHTML = '✔ Confirm';
   btn.disabled = false;
