@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Spark Tools Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root {
+    --blue: #185FA5;
+    --blue-light: #E6F1FB;
+    --blue-dark: #0C447C;
+    --green: #3B6D11;
+    --green-light: #EAF3DE;
+    --amber: #854F0B;
+    --amber-light: #FAEEDA;
+    --red: #A32D2D;
+    --red-light: #FCEBEB;
+    --gray: #5F5E5A;
+    --gray-light: #F1EFE8;
+    --border: #D3D1C7;
+    --text: #2C2C2A;
+    --text-muted: #888780;
+    --bg: #ffffff;
+    --bg2: #F1EFE8;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg2); color: var(--text); font-size: 15px; }
+
+  /* ── NAV ── */
+  .nav { background: var(--blue-dark); color: #fff; padding: 14px 16px; display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 100; }
+  .nav-logo { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .nav-sub { font-size: 12px; opacity: 0.65; }
+  .nav-spacer { flex: 1; }
+  .nav-status { font-size: 12px; opacity: 0.7; }
+
+  /* ── PAGE SHELL ── */
+  .page { display: none; padding: 16px; max-width: 900px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* ── BOTTOM NAV (mobile) ── */
+  .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid var(--border); display: flex; z-index: 100; }
+  .bnav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 4px 12px; border: none; background: transparent; color: var(--text-muted); font-size: 10px; cursor: pointer; }
+  .bnav-btn.active { color: var(--blue); }
+  .bnav-icon { font-size: 20px; line-height: 1; }
+
+  /* padding so content clears bottom nav */
+  .page-content { padding-bottom: 80px; }
+
+  /* ── CARDS ── */
+  .card { background: var(--bg); border-radius: var(--radius); border: 1px solid var(--border); padding: 16px; margin-bottom: 12px; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+
+  /* ── STATS ── */
+  .stat-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
+  .stat { background: var(--bg); border-radius: var(--radius-sm); border: 1px solid var(--border); padding: 12px 14px; }
+  .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+  .stat-val { font-size: 26px; font-weight: 700; }
+  .stat-val.out { color: var(--red); }
+  .stat-val.in { color: var(--green); }
+  .stat-val.maint { color: var(--amber); }
+
+  /* ── TOOL LIST ── */
+  .tool-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .tool-item:last-child { border-bottom: none; }
+  .tool-icon { width: 42px; height: 42px; border-radius: 10px; background: var(--gray-light); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .tool-info { flex: 1; min-width: 0; }
+  .tool-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tool-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+  .badge-out { background: var(--red-light); color: var(--red); }
+  .badge-in { background: var(--green-light); color: var(--green); }
+  .badge-maint { background: var(--amber-light); color: var(--amber); }
+
+  /* ── SCAN PAGE ── */
+  .scan-hero { background: var(--blue); border-radius: var(--radius); padding: 24px 20px; text-align: center; color: #fff; margin-bottom: 14px; }
+  .scan-hero-icon { font-size: 48px; margin-bottom: 8px; }
+  .scan-hero h2 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .scan-hero p { font-size: 13px; opacity: 0.8; }
+  .form-field { margin-bottom: 14px; }
+  .form-field label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+  .form-field select, .form-field input { width: 100%; padding: 12px 14px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); background: var(--bg); color: var(--text); font-size: 15px; appearance: none; }
+  .form-field select:focus, .form-field input:focus { outline: none; border-color: var(--blue); }
+  .btn { display: block; width: 100%; padding: 14px; border-radius: var(--radius-sm); border: none; font-size: 16px; font-weight: 700; cursor: pointer; text-align: center; }
+  .btn-primary { background: var(--blue); color: #fff; }
+  .btn-primary:active { background: var(--blue-dark); }
+  .btn-danger { background: var(--red-light); color: var(--red); margin-top: 8px; }
+  .alert { border-radius: var(--radius-sm); padding: 14px 16px; font-size: 14px; font-weight: 500; margin-top: 12px; display: none; }
+  .alert-success { background: var(--green-light); color: var(--green); }
+  .alert-error { background: var(--red-light); color: var(--red); }
+  .user-pill { display: flex; align-items: center; gap: 8px; background: var(--blue-light); border-radius: 99px; padding: 6px 12px 6px 8px; margin-bottom: 14px; }
+  .user-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--blue); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+  .user-pill-name { font-size: 13px; font-weight: 600; color: var(--blue-dark); }
+  .user-pill-change { font-size: 12px; color: var(--blue); margin-left: auto; cursor: pointer; text-decoration: underline; }
+
+  /* ── QR PAGE ── */
+  .qr-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .qr-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; text-align: center; }
+  .qr-wrap { display: flex; justify-content: center; margin-bottom: 8px; }
+  .qr-wrap canvas, .qr-wrap img { border-radius: 4px; }
+  .qr-name { font-size: 12px; font-weight: 700; color: var(--text); line-height: 1.3; }
+  .qr-id { font-size: 10px; color: var(--text-muted); margin-top: 2px; font-family: monospace; }
+
+  /* ── LOG ── */
+  .log-item { padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .log-item:last-child { border-bottom: none; }
+  .log-top { display: flex; align-items: center; gap: 8px; }
+  .log-tool { font-size: 13px; font-weight: 600; flex: 1; }
+  .log-time { font-size: 11px; color: var(--text-muted); }
+  .log-meta { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+
+  /* ── MODAL ── */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; display: none; align-items: flex-end; }
+  .modal-bg.open { display: flex; }
+  .modal { background: var(--bg); border-radius: 18px 18px 0 0; padding: 20px 16px 32px; width: 100%; max-height: 80vh; overflow-y: auto; }
+  .modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+  .modal h3 { font-size: 17px; font-weight: 700; margin-bottom: 16px; }
+  .name-option { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .name-option:last-child { border-bottom: none; }
+  .name-option:active { opacity: 0.7; }
+  .name-initial { width: 36px; height: 36px; border-radius: 50%; background: var(--blue-light); color: var(--blue-dark); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+  .name-label { font-size: 15px; font-weight: 500; }
+
+  /* ── SETTINGS ── */
+  .settings-section { margin-bottom: 20px; }
+  .settings-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 8px; }
+  .settings-item { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 6px; font-size: 14px; }
+  .settings-input { width: 100%; border: none; outline: none; font-size: 14px; background: transparent; color: var(--text); }
+  textarea.settings-input { resize: vertical; min-height: 80px; font-family: inherit; }
+  .btn-sm { display: inline-block; padding: 8px 16px; border-radius: var(--radius-sm); border: 1.5px solid var(--blue); color: var(--blue); background: transparent; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-sm:active { background: var(--blue-light); }
+
+  .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+  .empty-state-icon { font-size: 40px; margin-bottom: 10px; }
+  .empty-state p { font-size: 14px; }
+
+  .sync-indicator { font-size: 11px; color: var(--text-muted); text-align: center; padding: 6px 0; }
+  .sync-indicator.syncing { color: var(--blue); }
+  .sync-indicator.error { color: var(--red); }
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<div class="nav">
+  <div>
+    <div class="nav-logo">⚡ Spark Tools</div>
+    <div class="nav-sub">Equipment Tracker</div>
+  </div>
+  <div class="nav-spacer"></div>
+  <div class="nav-status" id="sync-status">● Live</div>
+</div>
+
+<!-- PAGES -->
+
+<!-- DASHBOARD -->
+<div class="page active page-content" id="page-dashboard">
+  <div style="margin-bottom:14px; margin-top:8px;">
+    <div class="stat-row">
+      <div class="stat"><div class="stat-label">Total Tools</div><div class="stat-val" id="s-total">—</div></div>
+      <div class="stat"><div class="stat-label">Checked Out</div><div class="stat-val out" id="s-out">—</div></div>
+      <div class="stat"><div class="stat-label">In Yard</div><div class="stat-val in" id="s-in">—</div></div>
+      <div class="stat"><div class="stat-label">Maintenance</div><div class="stat-val maint" id="s-maint">—</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">All Equipment</div>
+    <div id="tool-list"><div class="empty-state"><div class="empty-state-icon">🔧</div><p>Loading tools…</p></div></div>
+  </div>
+  <div class="sync-indicator" id="dash-sync">Tap a tool to view details</div>
+</div>
+
+<!-- SCAN / CHECK OUT -->
+<div class="page page-content" id="page-scan">
+  <div style="margin-top:8px;">
+    <div class="scan-hero">
+      <div class="scan-hero-icon">📲</div>
+      <h2>Check Out a Tool</h2>
+      <p>Select the tool, confirm your name and site</p>
+    </div>
+
+    <div class="card">
+      <!-- Current user pill -->
+      <div id="user-pill-wrap"></div>
+
+      <div class="form-field">
+        <label>Tool / Equipment</label>
+        <select id="scan-tool"></select>
+      </div>
+      <div class="form-field">
+        <label>Job Site / Location</label>
+        <select id="scan-site">
+          <option>Depot / Yard</option>
+          <option>Site A – Docklands</option>
+          <option>Site B – Richmond</option>
+          <option>Site C – Footscray</option>
+          <option>Site D – Hawthorn</option>
+          <option>Site E – Brunswick</option>
+          <option>Workshop / Maintenance</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Action</label>
+        <select id="scan-action">
+          <option value="out">Check Out (taking tool)</option>
+          <option value="in">Return to Yard</option>
+          <option value="maint">Send to Maintenance</option>
+        </select>
+      </div>
+      <div class="form-field" id="note-field">
+        <label>Note (optional)</label>
+        <input type="text" id="scan-note" placeholder="e.g. needed until Friday" />
+      </div>
+
+      <button class="btn btn-primary" id="submit-btn" onclick="submitCheckout()">✔ Confirm</button>
+      <div class="alert alert-success" id="scan-success"></div>
+      <div class="alert alert-error" id="scan-error"></div>
+    </div>
+  </div>
+</div>
+
+<!-- QR CODES -->
+<div class="page page-content" id="page-qr">
+  <div style="margin-top:8px;">
+    <div class="card">
+      <div class="card-title">QR Codes — Print &amp; Attach to Tools</div>
+      <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">Each QR code links to this app with the tool pre-selected. Stick or laminate onto each tool/case.</p>
+      <div class="qr-grid" id="qr-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ACTIVITY LOG -->
+<div class="page page-content" id="page-log">
+  <div style="margin-top:8px;">
+    <div class="card">
+      <div class="card-title">Activity Log</div>
+      <div id="log-list"><div class="empty-state"><div class="empty-state-icon">📋</div><p>Loading log…</p></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="page page-content" id="page-settings">
+  <div style="margin-top:8px;">
+    <div class="card">
+      <div class="settings-label">Google Sheets Connection</div>
+      <div class="settings-section">
+        <div class="settings-item">
+          <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">Apps Script Web App URL</label>
+          <input class="settings-input" id="cfg-url" type="url" placeholder="https://script.google.com/macros/s/…/exec" />
+        </div>
+        <button class="btn-sm" onclick="saveConfig()" style="margin-top:6px;">Save &amp; Test Connection</button>
+        <div class="alert alert-success" id="cfg-ok" style="margin-top:8px;"></div>
+        <div class="alert alert-error" id="cfg-err" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="settings-label" style="margin-top:16px;">Team Members</div>
+      <div class="settings-section">
+        <div class="settings-item">
+          <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">One name per line</label>
+          <textarea class="settings-input" id="cfg-names" placeholder="Dan M.&#10;Aisha K.&#10;Luca B."></textarea>
+        </div>
+        <button class="btn-sm" onclick="saveNames()" style="margin-top:6px;">Save Names</button>
+      </div>
+
+      <div class="settings-label" style="margin-top:16px;">Job Sites</div>
+      <div class="settings-section">
+        <div class="settings-item">
+          <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">One site per line</label>
+          <textarea class="settings-input" id="cfg-sites" placeholder="Depot / Yard&#10;Site A – Docklands&#10;Site B – Richmond"></textarea>
+        </div>
+        <button class="btn-sm" onclick="saveSites()" style="margin-top:6px;">Save Sites</button>
+      </div>
+
+      <div class="settings-label" style="margin-top:16px;">Your Identity (this device)</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Saved in this browser only.</p>
+      <button class="btn btn-danger" onclick="clearUser()" style="font-size:14px;font-weight:600;">Change My Name</button>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <button class="bnav-btn active" onclick="showPage('dashboard',this)">
+    <span class="bnav-icon">🏠</span>Dashboard
+  </button>
+  <button class="bnav-btn" onclick="showPage('scan',this)">
+    <span class="bnav-icon">📲</span>Check Out
+  </button>
+  <button class="bnav-btn" onclick="showPage('qr',this)">
+    <span class="bnav-icon">🔲</span>QR Codes
+  </button>
+  <button class="bnav-btn" onclick="showPage('log',this)">
+    <span class="bnav-icon">📋</span>Log
+  </button>
+  <button class="bnav-btn" onclick="showPage('settings',this)">
+    <span class="bnav-icon">⚙️</span>Settings
+  </button>
+</div>
+
+<!-- NAME PICKER MODAL -->
+<div class="modal-bg" id="name-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>Who are you?</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">This device will remember your name.</p>
+    <div id="name-list"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  CONFIG  — loaded from localStorage
+// ═══════════════════════════════════════════════════════
+const LS = {
+  get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set: (k,v) => localStorage.setItem(k, JSON.stringify(v)),
+};
+
+let SCRIPT_URL = LS.get('scriptUrl') || '';
+let currentUser = LS.get('currentUser') || null;
+let NAMES = LS.get('teamNames') || ['Dan M.','Aisha K.','Luca B.','Priya S.','James R.'];
+let SITES = LS.get('sites') || ['Depot / Yard','Site A – Docklands','Site B – Richmond','Site C – Footscray','Site D – Hawthorn','Site E – Brunswick','Workshop / Maintenance'];
+
+// Local cache
+let toolsCache = [];
+let logCache = [];
+
+// ═══════════════════════════════════════════════════════
+//  NAV
+// ═══════════════════════════════════════════════════════
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'qr') renderQR();
+  if (name === 'log') renderLog();
+  if (name === 'settings') loadSettingsPage();
+  if (name === 'scan') renderScanPage();
+}
+
+// ═══════════════════════════════════════════════════════
+//  GOOGLE SHEETS API
+// ═══════════════════════════════════════════════════════
+async function apiCall(action, params = {}) {
+  if (!SCRIPT_URL) return { ok: false, error: 'No URL configured. Go to Settings.' };
+  const url = SCRIPT_URL + '?action=' + action + '&' + new URLSearchParams(params);
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    return data;
+  } catch (e) {
+    return { ok: false, error: 'Network error: ' + e.message };
+  }
+}
+
+async function apiPost(action, body) {
+  if (!SCRIPT_URL) return { ok: false, error: 'No URL configured. Go to Settings.' };
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action, ...body }),
+    });
+    const data = await res.json();
+    return data;
+  } catch (e) {
+    return { ok: false, error: 'Network error: ' + e.message };
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  LOAD DATA
+// ═══════════════════════════════════════════════════════
+async function loadDashboard() {
+  setSyncStatus('syncing', '⟳ Syncing…');
+  const res = await apiCall('getTools');
+  if (!res.ok) {
+    setSyncStatus('error', '✕ ' + (res.error || 'Error'));
+    renderDashboard(toolsCache);
+    return;
+  }
+  toolsCache = res.tools || [];
+  setSyncStatus('', '● Live');
+  renderDashboard(toolsCache);
+}
+
+async function loadLog() {
+  const res = await apiCall('getLog');
+  if (res.ok) { logCache = res.log || []; renderLog(); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  DASHBOARD RENDER
+// ═══════════════════════════════════════════════════════
+const TOOL_ICONS = { drill: '🔨', cable: '🔌', meter: '📏', lift: '🏗️', puller: '🔧', tester: '🔬', lead: '🔋', bender: '🔩', default: '🛠️' };
+
+function toolIcon(name) {
+  const n = name.toLowerCase();
+  if (n.includes('drill')) return '🔨';
+  if (n.includes('cable') || n.includes('lead')) return '🔌';
+  if (n.includes('meter') || n.includes('tester') || n.includes('multimeter')) return '📏';
+  if (n.includes('lift') || n.includes('scissor')) return '🏗️';
+  if (n.includes('puller')) return '⚙️';
+  if (n.includes('bender')) return '🔩';
+  return '🛠️';
+}
+
+function renderDashboard(tools) {
+  const out = tools.filter(t => t.status === 'out').length;
+  const inY = tools.filter(t => t.status === 'in').length;
+  const mnt = tools.filter(t => t.status === 'maint').length;
+  document.getElementById('s-total').textContent = tools.length;
+  document.getElementById('s-out').textContent = out;
+  document.getElementById('s-in').textContent = inY;
+  document.getElementById('s-maint').textContent = mnt;
+
+  const list = document.getElementById('tool-list');
+  if (!tools.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔧</div><p>No tools found. Add tools in your Google Sheet.</p></div>';
+    return;
+  }
+  list.innerHTML = tools.map(t => `
+    <div class="tool-item">
+      <div class="tool-icon">${toolIcon(t.name)}</div>
+      <div class="tool-info">
+        <div class="tool-name">${t.name}</div>
+        <div class="tool-meta">${t.id} · ${t.who ? t.who + ' · ' : ''}${t.site || '—'}</div>
+      </div>
+      <div>${badgeHtml(t.status)}</div>
+    </div>`).join('');
+}
+
+function badgeHtml(s) {
+  if (s === 'out') return '<span class="badge badge-out">Out</span>';
+  if (s === 'in') return '<span class="badge badge-in">In Yard</span>';
+  return '<span class="badge badge-maint">Maint.</span>';
+}
+
+// ═══════════════════════════════════════════════════════
+//  SCAN PAGE
+// ═══════════════════════════════════════════════════════
+function renderScanPage() {
+  // User pill
+  renderUserPill();
+  // Tool dropdown
+  const sel = document.getElementById('scan-tool');
+  sel.innerHTML = toolsCache.map(t => `<option value="${t.id}">${t.name} (${t.id})</option>`).join('');
+  // Site dropdown
+  const site = document.getElementById('scan-site');
+  site.innerHTML = SITES.map(s => `<option>${s}</option>`).join('');
+
+  // If URL param ?id=EL-001 — pre-select tool (for QR code scans)
+  const params = new URLSearchParams(window.location.search);
+  const qrId = params.get('id');
+  if (qrId) {
+    for (let opt of sel.options) { if (opt.value === qrId) { opt.selected = true; break; } }
+  }
+}
+
+function renderUserPill() {
+  const wrap = document.getElementById('user-pill-wrap');
+  if (!currentUser) {
+    wrap.innerHTML = '<p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">Select your name below or <a href="#" onclick="openNameModal()" style="color:var(--blue);">tap here to set it</a>.</p>';
+    return;
+  }
+  const initials = currentUser.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  wrap.innerHTML = `
+    <div class="user-pill">
+      <div class="user-avatar">${initials}</div>
+      <span class="user-pill-name">${currentUser}</span>
+      <span class="user-pill-change" onclick="openNameModal()">Change</span>
+    </div>`;
+}
+
+async function submitCheckout() {
+  if (!currentUser) { openNameModal(); return; }
+  const tool = document.getElementById('scan-tool').value;
+  const site = document.getElementById('scan-site').value;
+  const action = document.getElementById('scan-action').value;
+  const note = document.getElementById('scan-note').value;
+
+  const btn = document.getElementById('submit-btn');
+  btn.innerHTML = '<span class="spinner"></span>Saving…';
+  btn.disabled = true;
+
+  const realSite = action === 'in' ? 'Depot / Yard' : action === 'maint' ? 'Workshop / Maintenance' : site;
+
+  const res = await apiPost('checkout', { toolId: tool, who: currentUser, site: realSite, action, note });
+
+  btn.innerHTML = '✔ Confirm';
+  btn.disabled = false;
+
+  const ok = document.getElementById('scan-success');
+  const err = document.getElementById('scan-error');
+  ok.style.display = 'none'; err.style.display = 'none';
+
+  if (res.ok) {
+    const actionLabel = action === 'out' ? 'checked out' : action === 'in' ? 'returned' : 'sent to maintenance';
+    ok.textContent = '✔ ' + (toolsCache.find(t=>t.id===tool)?.name || tool) + ' ' + actionLabel + ' successfully!';
+    ok.style.display = 'block';
+    setTimeout(() => ok.style.display = 'none', 5000);
+    loadDashboard();
+  } else {
+    err.textContent = '✕ ' + (res.error || 'Something went wrong. Check your connection.');
+    err.style.display = 'block';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  NAME MODAL
+// ═══════════════════════════════════════════════════════
+function openNameModal() {
+  const list = document.getElementById('name-list');
+  list.innerHTML = NAMES.map(n => {
+    const init = n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    return `<div class="name-option" onclick="selectUser('${n}')">
+      <div class="name-initial">${init}</div>
+      <div class="name-label">${n}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('name-modal').classList.add('open');
+}
+
+function selectUser(name) {
+  currentUser = name;
+  LS.set('currentUser', name);
+  document.getElementById('name-modal').classList.remove('open');
+  renderUserPill();
+}
+
+document.getElementById('name-modal').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open');
+});
+
+// ═══════════════════════════════════════════════════════
+//  QR CODES
+// ═══════════════════════════════════════════════════════
+function renderQR() {
+  const grid = document.getElementById('qr-grid');
+  grid.innerHTML = '';
+  const base = window.location.origin + window.location.pathname;
+
+  if (!toolsCache.length) {
+    grid.innerHTML = '<p style="font-size:13px;color:var(--text-muted);">No tools loaded yet. Connect to Google Sheets first.</p>';
+    return;
+  }
+
+  toolsCache.forEach(t => {
+    const card = document.createElement('div');
+    card.className = 'qr-card';
+    const wrap = document.createElement('div');
+    wrap.className = 'qr-wrap';
+    const qrDiv = document.createElement('div');
+    wrap.appendChild(qrDiv);
+    card.appendChild(wrap);
+    const info = document.createElement('div');
+    info.innerHTML = `<div class="qr-name">${t.name}</div><div class="qr-id">${t.id}</div>`;
+    card.appendChild(info);
+    grid.appendChild(card);
+    try {
+      new QRCode(qrDiv, {
+        text: base + '?id=' + t.id + '&page=scan',
+        width: 110, height: 110,
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    } catch(e) {}
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  LOG
+// ═══════════════════════════════════════════════════════
+function renderLog() {
+  const list = document.getElementById('log-list');
+  if (!logCache.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><p>No activity yet.</p></div>';
+    return;
+  }
+  list.innerHTML = [...logCache].reverse().slice(0, 80).map(e => `
+    <div class="log-item">
+      <div class="log-top">
+        <span class="log-tool">${e.toolName || e.toolId}</span>
+        <span class="log-time">${e.time}</span>
+        ${badgeHtml(e.action)}
+      </div>
+      <div class="log-meta">${e.who} · ${e.site}${e.note ? ' · ' + e.note : ''}</div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════════════════════
+function loadSettingsPage() {
+  document.getElementById('cfg-url').value = SCRIPT_URL;
+  document.getElementById('cfg-names').value = NAMES.join('\n');
+  document.getElementById('cfg-sites').value = SITES.join('\n');
+}
+
+async function saveConfig() {
+  const url = document.getElementById('cfg-url').value.trim();
+  const ok = document.getElementById('cfg-ok');
+  const err = document.getElementById('cfg-err');
+  ok.style.display='none'; err.style.display='none';
+  if (!url) { err.textContent='Please enter a URL.'; err.style.display='block'; return; }
+  SCRIPT_URL = url;
+  LS.set('scriptUrl', url);
+  const res = await apiCall('ping');
+  if (res.ok) {
+    ok.textContent = '✔ Connected! Loading tools…'; ok.style.display='block';
+    loadDashboard();
+    loadLog();
+  } else {
+    err.textContent = '✕ Connection failed: ' + (res.error||'Check the URL and try again.'); err.style.display='block';
+  }
+}
+
+function saveNames() {
+  NAMES = document.getElementById('cfg-names').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  LS.set('teamNames', NAMES);
+  alert('Names saved!');
+}
+
+function saveSites() {
+  SITES = document.getElementById('cfg-sites').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  LS.set('sites', SITES);
+  const site = document.getElementById('scan-site');
+  if (site) site.innerHTML = SITES.map(s=>`<option>${s}</option>`).join('');
+  alert('Sites saved!');
+}
+
+function clearUser() {
+  currentUser = null;
+  LS.set('currentUser', null);
+  openNameModal();
+}
+
+// ═══════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════
+function setSyncStatus(type, text) {
+  const el = document.getElementById('sync-status');
+  el.textContent = text;
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+window.addEventListener('load', () => {
+  // Check if opened from QR code
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('page') === 'scan') {
+    showPage('scan', document.querySelectorAll('.bnav-btn')[1]);
+  }
+
+  // Prompt for name if not set
+  if (!currentUser) setTimeout(openNameModal, 600);
+
+  loadDashboard();
+  if (SCRIPT_URL) loadLog();
+
+  // Auto-refresh every 60s
+  setInterval(loadDashboard, 60000);
+});
+</script>
+</body>
+</html>
